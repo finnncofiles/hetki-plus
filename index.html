@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Hetki+ v3.4.0 favorites-share</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    :root{
+      --bg:#0f1412;
+      --panel:#111814;
+      --panel2:#151d18;
+      --line:#2a332d;
+      --text:#e8efe9;
+      --muted:#9fb39f;
+      --green:#7fd36b;
+      --yellow:#d6a93a;
+      --red:#d65c5c;
+      --chip:#1f2a24;
+      --accent:#c6da74;
+      --soft:#d9ded8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+    .container{max-width:430px;margin:auto;min-height:100vh;background:var(--panel)}
+    .lang{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(17,24,20,.98);z-index:1000}
+    .lang button,.button,.chip{background:var(--chip);color:var(--text);border:none;border-radius:8px;cursor:pointer}
+    .lang button{flex:1;padding:10px 6px;font-weight:700}
+    details.infoBox{border-top:1px solid var(--line);padding:0 14px 14px}
+    details.infoBox summary{list-style:none;cursor:pointer;color:var(--muted);font-size:13px;font-weight:700;padding:12px 0 0}
+    details.infoBox summary::-webkit-details-marker{display:none}
+    .infoContent{padding-top:10px}
+    #mapWrap{position:relative}
+    #map{height:300px;background:#1c2420}
+    .mapHint,.mgrsBadge{
+      position:absolute;left:10px;background:rgba(17,24,20,.88);padding:8px 10px;border-radius:8px;
+      font-size:12px;color:var(--muted);border:1px solid var(--line);z-index:500
+    }
+    .mapHint{top:10px}
+    .mgrsBadge{bottom:10px;color:var(--text);font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace}
+    .chipRow{display:flex;gap:6px;padding:10px;flex-wrap:wrap}
+    .favRow{display:flex;gap:6px;padding:0 10px 10px;flex-wrap:wrap}
+    .favEmpty{padding:0 10px 10px;font-size:12px;color:var(--muted)}
+    .chip.smallChip{padding:7px 9px;font-size:11px}
+    .chip.danger{color:#f0b0b0}
+    .shareRow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+    .chip{padding:8px 10px;font-size:12px;border:1px solid var(--line)}
+    .chip.active{outline:1px solid #667064}
+    .section{padding:14px;border-top:1px solid var(--line)}
+    .title{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700;letter-spacing:.04em}
+    .big{font-size:22px;font-weight:700;line-height:1.15}
+    .mid{font-size:18px;font-weight:700;line-height:1.2}
+    .small{font-size:14px;color:var(--muted);line-height:1.4}
+    .row{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .row-wrap{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .badge{padding:7px 10px;border-radius:999px;font-size:12px;font-weight:700}
+    .bg-good{background:rgba(127,211,107,.15);color:var(--green)}
+    .bg-warn{background:rgba(214,169,58,.15);color:var(--yellow)}
+    .bg-bad{background:rgba(214,92,92,.15);color:var(--red)}
+    .button{padding:12px 12px;text-align:center;margin-top:10px;width:100%}
+    .slots{display:grid;gap:10px;margin-top:10px}
+    .slot{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px;min-height:92px}
+    .subrow{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+    input[type="datetime-local"]{
+      background:#151d18;color:var(--text);border:1px solid var(--line);border-radius:8px;
+      padding:10px 12px;font:inherit;min-width:220px;
+    }
+    .helper{font-size:12px;color:var(--muted);margin-top:8px}
+    .timeline{display:grid;gap:8px;margin-top:8px}
+    .day{display:grid;grid-template-columns:54px 1fr;gap:8px;align-items:center}
+    .dayname{font-size:13px;color:var(--muted);font-weight:700}
+    .bar{display:grid;grid-template-columns:repeat(12,1fr);gap:3px}
+    .seg{
+      height:18px;border-radius:4px;background:#26312a;position:relative;display:flex;align-items:center;
+      justify-content:center;color:var(--soft);font-size:13px;line-height:1
+    }
+    .seg.good{background:rgba(127,211,107,.45)}
+    .seg.warn{background:rgba(214,169,58,.45)}
+    .seg.bad{background:rgba(214,92,92,.42)}
+    .seg.mark::after{content:"";position:absolute;inset:-2px;border:2px solid #eef4e8;border-radius:6px}
+    .hidden{display:none}
+    .metricItem{margin:8px 0}
+    .metricMain{font-size:16px;line-height:1.35}
+    .metricSub{margin-left:22px;color:var(--muted);font-size:14px;line-height:1.35}
+    .sources{opacity:.68}
+    .toast{
+      position:fixed;left:50%;bottom:18px;transform:translateX(-50%);
+      background:#18201b;border:1px solid var(--line);padding:10px 12px;border-radius:10px;
+      color:var(--text);font-size:13px;display:none;z-index:2000
+    }
+    .leaflet-container{background:#1c2420}
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="lang">
+    <button onclick="setLang('fi')">FI</button>
+    <button onclick="setLang('en')">EN</button>
+    <button onclick="setLang('ua')">UA</button>
+  </div>
+
+  <details class="infoBox">
+    <summary id="infoSummary"></summary>
+    <div class="infoContent">
+      <div class="mid">HETKI+ <span>v3.4.0 favorites-share</span></div>
+      <div class="small" id="infoPurpose"></div>
+      <div class="small" style="margin-top:10px" id="infoDisclaimer"></div>
+      <div class="small" style="margin-top:10px" id="infoSources"></div>
+      <div class="small" style="margin-top:10px">© Hetki+</div>
+    </div>
+  </details>
+
+  <div id="mapWrap">
+    <div id="map"></div>
+    <div class="mapHint" id="mapHint"></div>
+    <div class="mgrsBadge hidden" id="mgrsBadge"></div>
+  </div>
+
+  <div class="chipRow">
+    <button class="chip active" id="radius30" onclick="setRadius(30000)">~30 km</button>
+    <button class="chip" id="radius10" onclick="setRadius(10000)">~10 km</button>
+    <button class="chip" id="radius80" onclick="setRadius(80000)">~80 km</button>
+    <button class="chip" id="savePlaceBtn" onclick="saveFavorite()"></button>
+  </div>
+  <div class="favRow" id="favoritesRow"></div>
+  <div class="favEmpty" id="favoritesEmpty"></div>
+
+  <div class="section">
+    <div class="title" id="startLabel"></div>
+    <div class="row-wrap">
+      <div class="button" onclick="setStartNow()" id="nowBtn" style="width:auto"></div>
+      <input type="datetime-local" id="startPicker">
+    </div>
+    <div class="helper" id="startHelper"></div>
+  </div>
+
+  <div class="section">
+    <div class="title" id="bestLabel"></div>
+    <div class="big" id="bestMain"></div>
+    <div class="small" id="bestDesc"></div>
+    <div class="subrow">
+      <div class="small" id="confidenceText"></div>
+      <div class="small" id="scoreText"></div>
+    </div>
+    <div class="shareRow">
+      <button class="button" onclick="copyAssessmentText()" id="copyBtn"></button>
+      <button class="button" onclick="shareAssessmentCard()" id="shareBtn"></button>
+    </div>
+    <div class="slots">
+      <div class="slot">
+        <div class="mid" id="slot2"></div>
+        <div class="small" id="slot2desc"></div>
+      </div>
+      <div class="slot">
+        <div class="mid" id="slot3"></div>
+        <div class="small" id="slot3desc"></div>
+      </div>
+    </div>
+    <button class="button" onclick="toggleMore()" id="moreBtn"></button>
+  </div>
+
+  <div class="section">
+    <div class="title" id="nowSectionLabel"></div>
+    <div class="row">
+      <div class="big" id="currentState"></div>
+      <div class="badge bg-warn" id="nowBadge"></div>
+    </div>
+  </div>
+
+  <div class="section hidden" id="moreSection">
+    <div class="title" id="timelineLabel"></div>
+    <div class="small" id="legendLine"></div>
+    <div class="timeline" id="timeline"></div>
+  </div>
+
+  <div class="section">
+    <div class="title" id="extraLabel"></div>
+
+    <div class="metricItem">
+      <div class="metricMain" id="coverMetric"></div>
+      <div class="metricSub" id="coverExplain"></div>
+    </div>
+
+    <div class="metricItem">
+      <div class="metricMain" id="uasMetric"></div>
+      <div class="metricSub" id="uasExplain"></div>
+    </div>
+
+    <div class="metricItem">
+      <div class="metricMain" id="irMetric"></div>
+      <div class="metricSub" id="irExplain"></div>
+    </div>
+
+    <div class="metricItem">
+      <div class="metricMain" id="isrMetric"></div>
+      <div class="metricSub" id="isrExplain"></div>
+    </div>
+  </div>
+
+  <div class="section small sources" id="footerSources"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+<script src="https://unpkg.com/mgrs@1.0.0/dist/mgrs.min.js">
+</script>
+<script>
+const dict = {
+  fi: {
+    infoSummary:"Tietoa ▾",
+    infoPurpose:"Työkalu olosuhde-edun arviointiin. Yhdistää peite-edun, lähialueen UAS-rajoitteet, IR-heikkenemisen ja ISR-heikkenemisen 5 vrk aikajänteellä.",
+    infoDisclaimer:"Tämä työkalu perustuu avoimiin sääennusteisiin ja laskennallisiin arvioihin. Ei korvaa käyttäjän omaa harkintaa tai muuta tilannetietoa.",
+    infoSources:"Data: Open-Meteo, OpenStreetMap/CARTO",
+    mapHint:"Napauta karttaa valitaksesi analyysialue",
+    start:"ALKAEN",
+    startHelper:"Analyysi alkaa tästä hetkestä eteenpäin. Menneitä aikoja ei käytetä. Suunnitteluikkuna 0–5 vrk.",
+    nowBtn:"Nykyhetki",
+    nowSection:"NYT",
+    best:"PARHAAT HETKET 5 VRK",
+    bestDesc:"Paras olosuhde-etu valitusta ajasta eteenpäin",
+    altDesc:"Vaihtoehto",
+    resDesc:"Varalla",
+    more:"Näytä 5 vrk aikajana",
+    less:"Piilota aikajana",
+    timeline:"5 VRK AIKAJANA (2 H SLOTIT)",
+    legend:"🟩 ikkuna syntyy   🟨 ehkä   🟥 no-go",
+    extra:"LISÄHUOMIOT",
+    confidence:"Luotettavuus: {v}",
+    score:"Hetki-etu: {v}",
+    copy:"Kopioi brief",
+    share:"Luo kuva",
+    savePlace:"Tallenna paikka",
+    favoritesEmpty:"Ei tallennettuja paikkoja",
+    favoritesPrompt:"Anna paikalle nimi",
+    favoriteSaved:"Paikka tallennettu",
+    favoriteDeleted:"Paikka poistettu",
+    copied:"Brief kopioitu",
+    pngReady:"Kuvakortti luotu",
+    noSelection:"Valitse alue kartalta",
+    noFuture:"Ei selkeää etua valitusta ajasta eteenpäin",
+    noAlt:"Ei riittävän vahvaa vaihtoehtoa",
+    recommendation:"Suositus",
+    alternative:"Vaihtoehto",
+    reserve:"Varalla",
+    nowState:"Nykytilanne",
+    reason_low_vis:"heikko näkyvyys",
+    reason_high_humidity:"korkea kosteus",
+    reason_rain:"kevyt tai kohtalainen sade",
+    reason_dew:"lämpötila lähellä kastepistettä",
+    reason_isr:"ISR heikkenee",
+    reason_uas:"UAS rajoittuu",
+    reasonPrefixRecommendation:"Suositus.",
+    reasonPrefixAlternative:"Vaihtoehto.",
+    reasonPrefixFallback:"Varalla.",
+    quality_good:"hyvä",
+    quality_moderate:"kohtalainen",
+    quality_weak:"heikko",
+    quality_strong:"heikkenee",
+    quality_stronger:"heikkenee selvästi",
+    quality_works:"toimii",
+    quality_limited:"rajoitettu",
+    quality_off:"ei käytettävissä",
+    cover_main:"🟨 ☁️ Peite: {v}",
+    cover_sub:"näkyvyys, kosteus, sade, pilvisyys",
+    uas_main:"🟥 🛸 UAS (lähialue): {v}",
+    uas_sub:"tuuli, puuskat, sade, lämpötila",
+    ir_main:"🟨 🌡️ IR: {v}",
+    ir_sub:"kastepiste-ero, kosteus, sade, näkyvyys",
+    isr_main:"🟩 📡 ISR (yläilma): {v}",
+    isr_sub:"EO/IR-heikkeneminen yläilman tiedustelulennokeille",
+    score_suggestion:"suositus",
+    score_option:"vaihtoehto",
+    score_none:"ei etua",
+    confidence_high:"korkea",
+    confidence_medium:"kohtalainen",
+    confidence_low:"heikko",
+    shareTitle:"HETKI+ arvio",
+    shareArea:"Alue",
+    shareTime:"Aika",
+    shareAdvantage:"Hetki-etu",
+    shareReason:"Peruste",
+    shareCover:"Peite",
+    shareUAS:"UAS",
+    shareIR:"IR",
+    shareISR:"ISR",
+    shareConf:"Luotettavuus",
+    dayNames:["Su","Ma","Ti","Ke","To","Pe","La"]
+  },
+  en: {
+    infoSummary:"Info ▾",
+    infoPurpose:"Tool for assessing environmental advantage. Combines cover, local UAS constraints, IR degradation and upper-air ISR degradation over a 5-day window.",
+    infoDisclaimer:"Based on open weather forecasts and calculated estimates. Does not replace judgment or other situational information.",
+    infoSources:"Data: Open-Meteo, OpenStreetMap/CARTO",
+    mapHint:"Tap the map to select the analysis area",
+    start:"START",
+    startHelper:"Analysis starts from this time forward. Past times are excluded. Planning window 0–5 days.",
+    nowBtn:"Current time",
+    nowSection:"NOW",
+    best:"BEST WINDOWS 5 DAYS",
+    bestDesc:"Best environmental window from the selected start time forward",
+    altDesc:"Alternative window",
+    resDesc:"Backup window",
+    more:"Show 5-day timeline",
+    less:"Hide timeline",
+    timeline:"5-DAY TIMELINE (2H SLOTS)",
+    legend:"🟩 window opening   🟨 possible   🟥 no-go",
+    extra:"EXTRA NOTES",
+    confidence:"Confidence: {v}",
+    score:"Advantage score: {v}",
+    copy:"Copy brief",
+    share:"Create card",
+    savePlace:"Save place",
+    favoritesEmpty:"No saved places",
+    favoritesPrompt:"Name this place",
+    favoriteSaved:"Place saved",
+    favoriteDeleted:"Place deleted",
+    copied:"Brief copied",
+    pngReady:"Card created",
+    noSelection:"Select an area on the map",
+    noFuture:"No clear advantage from the selected time forward",
+    noAlt:"No suitable alternative",
+    recommendation:"Recommended window",
+    alternative:"Alternative window",
+    reserve:"Backup window",
+    nowState:"Current conditions",
+    reason_low_vis:"low visibility",
+    reason_high_humidity:"high humidity",
+    reason_rain:"light to moderate precipitation",
+    reason_dew:"temperature near dew point",
+    reason_isr:"ISR degraded",
+    reason_uas:"UAS constrained",
+    reasonPrefixRecommendation:"Recommended window.",
+    reasonPrefixAlternative:"Alternative window.",
+    reasonPrefixFallback:"Backup window.",
+    quality_good:"good",
+    quality_moderate:"moderate",
+    quality_weak:"weak",
+    quality_strong:"degraded",
+    quality_stronger:"degraded strongly",
+    quality_works:"operational",
+    quality_limited:"limited",
+    quality_off:"unavailable",
+    cover_main:"🟨 ☁️ Cover: {v}",
+    cover_sub:"visibility, humidity, precipitation, cloud cover",
+    uas_main:"🟥 🛸 Local UAS: {v}",
+    uas_sub:"wind, gusts, precipitation, temperature",
+    ir_main:"🟨 🌡️ IR: {v}",
+    ir_sub:"dew point spread, humidity, precipitation, visibility",
+    isr_main:"🟩 📡 Upper-air ISR: {v}",
+    isr_sub:"EO/IR degradation for upper-air reconnaissance drones",
+    score_suggestion:"recommended",
+    score_option:"possible",
+    score_none:"no advantage",
+    confidence_high:"High",
+    confidence_medium:"Moderate",
+    confidence_low:"Low",
+    shareTitle:"HETKI+ ASSESSMENT",
+    shareArea:"Area",
+    shareTime:"Time",
+    shareAdvantage:"Advantage",
+    shareReason:"Reason",
+    shareCover:"Cover",
+    shareUAS:"Local UAS",
+    shareIR:"IR",
+    shareISR:"Upper-air ISR",
+    shareConf:"Confidence",
+    dayNames:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
+  },
+  ua: {
+    infoSummary:"Інфо ▾",
+    infoPurpose:"Інструмент для оцінки переваги обстановки. Поєднує укриття, обмеження локальних БПЛА, погіршення IR та висотного ISR у вікні 5 діб.",
+    infoDisclaimer:"Базується на відкритих погодних прогнозах і розрахункових оцінках. Не замінює власне рішення або іншу ситуаційну інформацію.",
+    infoSources:"Дані: Open-Meteo, OpenStreetMap/CARTO",
+    mapHint:"Торкніться карти, щоб вибрати район аналізу",
+    start:"ПОЧАТОК",
+    startHelper:"Аналіз ведеться від цього моменту вперед. Минулий час не враховується. Вікно планування 0–5 діб.",
+    nowBtn:"Поточний час",
+    nowSection:"ЗАРАЗ",
+    best:"НАЙКРАЩІ ВІКНА НА 5 ДІБ",
+    bestDesc:"Найкраще вікно обстановки від вибраного часу вперед",
+    altDesc:"Альтернативне вікно",
+    resDesc:"Запасний варіант",
+    more:"Показати шкалу 5 діб",
+    less:"Сховати шкалу",
+    timeline:"ШКАЛА 5 ДІБ (СЛОТИ 2 ГОД)",
+    legend:"🟩 вікно формується   🟨 можливо   🟥 неприйнятно",
+    extra:"ДОДАТКОВІ СПОСТЕРЕЖЕННЯ",
+    confidence:"Рівень впевненості: {v}",
+    score:"Оцінка переваги: {v}",
+    copy:"Скопіювати brief",
+    share:"Створити картку",
+    savePlace:"Зберегти район",
+    favoritesEmpty:"Немає збережених районів",
+    favoritesPrompt:"Назва району",
+    favoriteSaved:"Район збережено",
+    favoriteDeleted:"Район видалено",
+    copied:"Brief скопійовано",
+    pngReady:"Картку створено",
+    noSelection:"Виберіть район на карті",
+    noFuture:"Чіткої переваги від вибраного часу вперед немає",
+    noAlt:"Підходящий варіант відсутній",
+    recommendation:"Рекомендоване вікно",
+    alternative:"Альтернативне вікно",
+    reserve:"Запасний варіант",
+    nowState:"Поточна обстановка",
+    reason_low_vis:"низька видимість",
+    reason_high_humidity:"висока вологість",
+    reason_rain:"слабкі або помірні опади",
+    reason_dew:"температура близька до точки роси",
+    reason_isr:"ISR знижено",
+    reason_uas:"БПЛА обмежені",
+    reasonPrefixRecommendation:"Рекомендоване вікно.",
+    reasonPrefixAlternative:"Альтернативне вікно.",
+    reasonPrefixFallback:"Запасний варіант.",
+    quality_good:"добрий",
+    quality_moderate:"помірний",
+    quality_weak:"слабкий",
+    quality_strong:"погіршується",
+    quality_stronger:"сильно погіршується",
+    quality_works:"працює",
+    quality_limited:"обмежений",
+    quality_off:"недоступний",
+    cover_main:"🟨 ☁️ Укриття: {v}",
+    cover_sub:"видимість, вологість, опади, хмарність",
+    uas_main:"🟥 🛸 Локальні БПЛА: {v}",
+    uas_sub:"вітер, пориви, опади, температура",
+    ir_main:"🟨 🌡️ IR: {v}",
+    ir_sub:"різниця з точкою роси, вологість, опади, видимість",
+    isr_main:"🟩 📡 Висотний ISR: {v}",
+    isr_sub:"погіршення EO/IR для висотних розвідувальних БПЛА",
+    score_suggestion:"рекомендовано",
+    score_option:"можливо",
+    score_none:"без переваги",
+    confidence_high:"високий",
+    confidence_medium:"середній",
+    confidence_low:"низький",
+    shareTitle:"ОЦІНКА HETKI+",
+    shareArea:"Район",
+    shareTime:"Час",
+    shareAdvantage:"Перевага",
+    shareReason:"Підстава",
+    shareCover:"Укриття",
+    shareUAS:"Локальні БПЛА",
+    shareIR:"IR",
+    shareISR:"Висотний ISR",
+    shareConf:"Рівень впевненості",
+    dayNames:["Нд","Пн","Вт","Ср","Чт","Пт","Сб"]
+  }
+};
+
+let lang='fi', radius=30000, map, marker, circle;
+const FAVORITES_KEY='hetkiPlusFavorites';
+let state={slots:[], windows:[], current:null, selectedStart:null, lastLatLng:null, mgrs:null};
+
+function tr(key){ return dict[lang][key]; }
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+function toLocalInputValue(date){ const d=new Date(date.getTime()-date.getTimezoneOffset()*60000); return d.toISOString().slice(0,16); }
+function parseLocalInputValue(value){ return value ? new Date(value) : new Date(); }
+
+function setMaxStart(){ const p=document.getElementById('startPicker'); const now=new Date(); p.max=toLocalInputValue(new Date(now.getTime()+5*24*60*60*1000)); }
+function setMinStart(){ const now=new Date(); const p=document.getElementById('startPicker'); p.min=toLocalInputValue(now); if(!state.selectedStart || state.selectedStart<now) state.selectedStart=now; p.value=toLocalInputValue(state.selectedStart); }
+function setStartNow(){ state.selectedStart=new Date(); setMinStart(); setMaxStart(); if(state.slots.length) recomputeWindows(); }
+function showToast(text){ const t=document.getElementById('toast'); t.textContent=text; t.style.display='block'; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>t.style.display='none',1800); }
+function getFavorites(){
+  try{ return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]'); }catch(e){ return []; }
+}
+function setFavorites(list){
+  localStorage.setItem(FAVORITES_KEY, JSON.stringify(list.slice(0,8)));
+}
+function renderFavorites(){
+  const row=document.getElementById('favoritesRow');
+  const empty=document.getElementById('favoritesEmpty');
+  if(!row || !empty) return;
+  const items=getFavorites();
+  row.innerHTML='';
+  if(!items.length){
+    empty.textContent=tr('favoritesEmpty');
+    return;
+  }
+  empty.textContent='';
+  items.forEach((fav, idx)=>{
+    const btn=document.createElement('button');
+    btn.className='chip smallChip';
+    btn.textContent='★ ' + fav.name;
+    btn.onclick=()=>loadFavorite(idx);
+    const del=document.createElement('button');
+    del.className='chip smallChip danger';
+    del.textContent='×';
+    del.onclick=(ev)=>{ ev.stopPropagation(); deleteFavorite(idx); };
+    row.appendChild(btn);
+    row.appendChild(del);
+  });
+}
+function saveFavorite(){
+  if(!state.lastLatLng) return showToast(tr('noSelection'));
+  const name=prompt(tr('favoritesPrompt'), state.mgrs || 'AO');
+  if(!name) return;
+  const items=getFavorites();
+  const entry={name:name.trim().slice(0,24), lat:state.lastLatLng.lat, lng:state.lastLatLng.lng, radius, mgrs:state.mgrs || ''};
+  const filtered=items.filter(x=>x.name!==entry.name);
+  filtered.unshift(entry);
+  setFavorites(filtered);
+  renderFavorites();
+  showToast(tr('favoriteSaved'));
+}
+function deleteFavorite(idx){
+  const items=getFavorites();
+  items.splice(idx,1);
+  setFavorites(items);
+  renderFavorites();
+  showToast(tr('favoriteDeleted'));
+}
+async function loadFavorite(idx){
+  const fav=getFavorites()[idx];
+  if(!fav) return;
+  setRadius(fav.radius || 30000);
+  state.lastLatLng={lat:fav.lat, lng:fav.lng};
+  try{ state.mgrs=fav.mgrs || (window.mgrs?window.mgrs.forward([fav.lng,fav.lat],5):null); }catch(err){ state.mgrs=null; }
+  const badge=document.getElementById('mgrsBadge');
+  if(state.mgrs){ badge.textContent=state.mgrs; badge.classList.remove('hidden'); }
+  if(marker) map.removeLayer(marker);
+  if(circle) map.removeLayer(circle);
+  marker=L.circleMarker([fav.lat,fav.lng],{radius:6,color:'#c6da74',weight:2,fillColor:'#c6da74',fillOpacity:.8}).addTo(map);
+  circle=L.circle([fav.lat,fav.lng],{radius,color:'#c6da74',weight:1,fillColor:'#c6da74',fillOpacity:.08}).addTo(map);
+  map.setView([fav.lat,fav.lng], Math.max(map.getZoom(),10));
+  await loadForecast(fav.lat,fav.lng);
+}
+
+
+function setLang(l){
+  lang=l;
+  document.documentElement.lang=l==='ua'?'uk':l;
+  const mapping={infoSummary:'infoSummary',infoPurpose:'infoPurpose',infoDisclaimer:'infoDisclaimer',infoSources:'infoSources',mapHint:'mapHint',startLabel:'start',startHelper:'startHelper',nowBtn:'nowBtn',bestLabel:'best',nowSectionLabel:'nowSection',timelineLabel:'timeline',legendLine:'legend',extraLabel:'extra',copyBtn:'copy',shareBtn:'share',savePlaceBtn:'savePlace',footerSources:'infoSources'};
+  Object.entries(mapping).forEach(([id,key])=>document.getElementById(id).textContent=tr(key));
+  document.getElementById('moreBtn').textContent=document.getElementById('moreSection').classList.contains('hidden')?tr('more'):tr('less');
+  renderFavorites();
+  if(state.mgrs) document.getElementById('mgrsBadge').textContent=state.mgrs;
+  setMinStart();
+  setMaxStart();
+  if(state.slots.length){
+    recomputeWindows();
+  } else {
+    renderState();
+  }
+}
+
+function setRadius(r){
+  radius=r;
+  ['radius10','radius30','radius80'].forEach(id=>document.getElementById(id).classList.remove('active'));
+  document.getElementById(r===10000?'radius10':r===30000?'radius30':'radius80').classList.add('active');
+  if(circle) circle.setRadius(radius);
+}
+function toggleMore(){
+  const el=document.getElementById('moreSection');
+  el.classList.toggle('hidden');
+  document.getElementById('moreBtn').textContent=el.classList.contains('hidden')?tr('more'):tr('less');
+}
+
+function initMap(){
+  map=L.map('map',{zoomControl:true}).setView([60.17,24.94],6);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{subdomains:'abcd',maxZoom:19,attribution:'&copy; OpenStreetMap &copy; CARTO'}).addTo(map);
+  map.on('click', async (e)=>{
+    const {lat,lng}=e.latlng;
+    state.lastLatLng={lat,lng};
+    try{ state.mgrs=window.mgrs?window.mgrs.forward([lng,lat],5):null; }catch(err){ state.mgrs=null; }
+    const badge=document.getElementById('mgrsBadge');
+    if(state.mgrs){ badge.textContent=state.mgrs; badge.classList.remove('hidden'); }
+    if(marker) map.removeLayer(marker);
+    if(circle) map.removeLayer(circle);
+    marker=L.circleMarker([lat,lng],{radius:6,color:'#c6da74',weight:2,fillColor:'#c6da74',fillOpacity:.8}).addTo(map);
+    circle=L.circle([lat,lng],{radius,color:'#c6da74',weight:1,fillColor:'#c6da74',fillOpacity:.08}).addTo(map);
+    await loadForecast(lat,lng);
+  });
+}
+
+function formatTime(iso){
+  const d=new Date(iso), day=dict[lang].dayNames[d.getDay()], hh=String(d.getHours()).padStart(2,'0'), mm=String(d.getMinutes()).padStart(2,'0');
+  return `${day} ${hh}:${mm}`;
+}
+function formatEndLabel(startIso, endIso){
+  const s=new Date(startIso), e=new Date(endIso), sDay=dict[lang].dayNames[s.getDay()], eDay=dict[lang].dayNames[e.getDay()], hh=String(e.getHours()).padStart(2,'0'), mm=String(e.getMinutes()).padStart(2,'0');
+  return sDay===eDay ? `${hh}:${mm}` : `${eDay} ${hh}:${mm}`;
+}
+function addHours(iso, h){ const d=new Date(iso); d.setHours(d.getHours()+h); return d.toISOString(); }
+
+function categoryText(value, type){
+  if(type==='cover'){
+    if(value>=70) return tr('quality_good');
+    if(value>=40) return tr('quality_moderate');
+    return tr('quality_weak');
+  }
+  if(type==='uas'){
+    if(value>=50) return tr('quality_off');
+    if(value>=25) return tr('quality_limited');
+    return tr('quality_works');
+  }
+  if(type==='ir' || type==='isr'){
+    if(value>=50) return tr('quality_stronger');
+    if(value>=25) return tr('quality_strong');
+    return tr('quality_good');
+  }
+  return '';
+}
+function scoreClass(score){
+  if(score>=65) return {label:tr('score_suggestion'), cls:'good', symbol:'■'};
+  if(score>=45) return {label:tr('score_option'), cls:'warn', symbol:'▨'};
+  return {label:tr('score_none'), cls:'bad', symbol:'□'};
+}
+function confidenceLabel(conf){
+  if(conf>=75) return tr('confidence_high');
+  if(conf>=55) return tr('confidence_medium');
+  return tr('confidence_low');
+}
+
+function computeCover(slot){
+  let v=0;
+  if(slot.visibility<1) v+=50;
+  else if(slot.visibility<2) v+=42;
+  else if(slot.visibility<5) v+=32;
+  else if(slot.visibility<10) v+=18;
+  else v+=5;
+
+  if(slot.rh>95) v+=18;
+  else if(slot.rh>=90) v+=14;
+  else if(slot.rh>=80) v+=8;
+  else v+=2;
+
+  if(slot.precip>2) v+=15;
+  else if(slot.precip>=0.2) v+=18;
+  else if(slot.precip>0) v+=4;
+
+  if(slot.cloud>80) v+=10;
+  else if(slot.cloud>=40) v+=5;
+
+  return clamp(Math.round(v),0,100);
+}
+function computeUAS(slot){
+  let v=0;
+  const windEff=Math.max(slot.wind, slot.gust*0.85);
+  if(windEff>12) v+=45;
+  else if(windEff>=8) v+=30;
+  else if(windEff>=5) v+=12;
+
+  if(slot.precip>2) v+=35;
+  else if(slot.precip>=0.2) v+=20;
+  else if(slot.precip>0) v+=5;
+
+  if(slot.temp<-15) v+=20;
+  else if(slot.temp<-5) v+=10;
+  else if(slot.temp>35) v+=6;
+
+  if(slot.gust>12) v+=8;
+  return clamp(Math.round(v),0,100);
+}
+function computeIR(slot){
+  let v=0;
+  const dt=slot.dewSpread;
+  if(dt<=1) v+=40;
+  else if(dt<=2) v+=30;
+  else if(dt<=4) v+=15;
+
+  if(slot.rh>95) v+=20;
+  else if(slot.rh>=90) v+=15;
+  else if(slot.rh>=80) v+=8;
+
+  if(slot.precip>2) v+=20;
+  else if(slot.precip>=0.2) v+=15;
+
+  if(slot.visibility<1) v+=15;
+  else if(slot.visibility<2) v+=12;
+  else if(slot.visibility<5) v+=8;
+
+  if(slot.hour>=2 && slot.hour<6 && dt<=2) v+=10;
+  return clamp(Math.round(v),0,100);
+}
+function computeISR(slot){
+  let v=0;
+  const dt=slot.dewSpread;
+  if(slot.visibility<1) v+=40;
+  else if(slot.visibility<2) v+=34;
+  else if(slot.visibility<5) v+=26;
+  else if(slot.visibility<10) v+=12;
+
+  if(slot.rh>95) v+=22;
+  else if(slot.rh>=90) v+=16;
+  else if(slot.rh>=80) v+=8;
+
+  if(slot.cloud>80) v+=15;
+  else if(slot.cloud>=40) v+=8;
+
+  if(dt<=1) v+=15;
+  else if(dt<=2) v+=10;
+  else if(dt<=4) v+=5;
+
+  if(slot.precip>2) v+=8;
+  else if(slot.precip>=0.2) v+=5;
+
+  return clamp(Math.round(v),0,100);
+}
+function computeAdvantage(slot){
+  const P=computeCover(slot), U=computeUAS(slot), IR=computeIR(slot), S=computeISR(slot);
+  let E=0.35*P+0.20*U+0.25*IR+0.20*S;
+  if(slot.visibility>10 && slot.rh<80 && slot.precip===0 && slot.dewSpread>4) E=Math.min(E,35);
+  if(S<25) E=Math.min(E,64);
+  if(slot.wind>15 || slot.precip>8) E=Math.min(E,44);
+  return {cover:P, uas:U, ir:IR, isr:S, score:clamp(Math.round(E),0,100)};
+}
+function buildReason(slot){
+  const reasons=[];
+  if(slot.visibility<5) reasons.push(tr('reason_low_vis'));
+  if(slot.rh>=90) reasons.push(tr('reason_high_humidity'));
+  if(slot.precip>=0.2 && slot.precip<=2) reasons.push(tr('reason_rain'));
+  if(slot.dewSpread<=2) reasons.push(tr('reason_dew'));
+  if(slot.isr>=50) reasons.push(tr('reason_isr'));
+  if(slot.uas>=25) reasons.push(tr('reason_uas'));
+  return reasons.slice(0,3).join(', ');
+}
+function computeConfidence(windowObj){
+  if(!windowObj || !windowObj.slots.length) return 40;
+  const start=new Date(windowObj.startTime), now=new Date();
+  const hoursAhead=Math.max(0,(start-now)/36e5);
+  let conf=88;
+  if(hoursAhead>24 && hoursAhead<=72) conf=74;
+  else if(hoursAhead>72) conf=60;
+
+  const series=windowObj.slots.map(s=>s.score);
+  const spread=Math.max(...series)-Math.min(...series);
+  if(spread>25) conf-=12;
+  else if(spread>15) conf-=6;
+  else conf+=3;
+
+  const visSeries=windowObj.slots.map(s=>s.visibility);
+  const visSpread=Math.max(...visSeries)-Math.min(...visSeries);
+  if(visSpread>5) conf-=6;
+
+  const rainFlip=windowObj.slots.filter((s,i,a)=>i>0 && ((s.precip>=0.2)!==(a[i-1].precip>=0.2))).length;
+  if(rainFlip>1) conf-=5;
+
+  return clamp(Math.round(conf),35,95);
+}
+function buildWindows(filteredSlots){
+  const windows=[]; let current=null;
+  filteredSlots.forEach((s, idx)=>{
+    const ok=s.score>=45;
+    if(!ok){
+      if(current && current.hasSuggestion) windows.push(current);
+      current=null;
+      return;
+    }
+    if(!current) current={start:idx,end:idx,slots:[s],hasSuggestion:s.score>=65};
+    else{
+      current.end=idx;
+      current.slots.push(s);
+      if(s.score>=65) current.hasSuggestion=true;
+    }
+  });
+  if(current && current.hasSuggestion) windows.push(current);
+
+  return windows.map((w,i)=>{
+    const ss=filteredSlots[w.start], es=filteredSlots[w.end];
+    const avg=Math.round(w.slots.reduce((a,b)=>a+b.score,0)/w.slots.length);
+    return {rank:i+1,startTime:ss.time,endTime:addHours(es.time,2),startLabel:formatTime(ss.time),endLabel:formatEndLabel(ss.time,addHours(es.time,2)),avg,slots:w.slots,lead:w.slots[0],confidence:0,reason:''};
+  }).sort((a,b)=>b.avg-a.avg).slice(0,3).map((w,i)=>{w.rank=i+1;w.confidence=computeConfidence(w);w.reason=buildReason(w.lead);return w;});
+}
+
+async function loadForecast(lat,lon){
+  try{
+    const url='https://api.open-meteo.com/v1/forecast'
+      + '?latitude='+encodeURIComponent(lat)
+      + '&longitude='+encodeURIComponent(lon)
+      + '&hourly=temperature_2m,dew_point_2m,relative_humidity_2m,precipitation,cloud_cover,visibility,wind_speed_10m,wind_gusts_10m,is_day'
+      + '&forecast_days=5&timezone=auto';
+    const res=await fetch(url);
+    const data=await res.json();
+    const slots=[];
+    const h=data.hourly || {};
+    const times=h.time || [];
+    for(let i=0;i<times.length;i+=2){
+      const next=Math.min(i+1,times.length-1);
+      const time=times[i];
+      const d=new Date(time);
+      const temp=((h.temperature_2m?.[i] ?? 0)+(h.temperature_2m?.[next] ?? h.temperature_2m?.[i] ?? 0))/2;
+      const dew=((h.dew_point_2m?.[i] ?? temp)+(h.dew_point_2m?.[next] ?? h.dew_point_2m?.[i] ?? temp))/2;
+      const rh=((h.relative_humidity_2m?.[i] ?? 0)+(h.relative_humidity_2m?.[next] ?? h.relative_humidity_2m?.[i] ?? 0))/2;
+      const precip=((h.precipitation?.[i] ?? 0)+(h.precipitation?.[next] ?? h.precipitation?.[i] ?? 0))/2;
+      const cloud=((h.cloud_cover?.[i] ?? 0)+(h.cloud_cover?.[next] ?? h.cloud_cover?.[i] ?? 0))/2;
+      const visibility=((h.visibility?.[i] ?? 10000)+(h.visibility?.[next] ?? h.visibility?.[i] ?? 10000))/2000;
+      const wind=((h.wind_speed_10m?.[i] ?? 0)+(h.wind_speed_10m?.[next] ?? h.wind_speed_10m?.[i] ?? 0))/2;
+      const gust=((h.wind_gusts_10m?.[i] ?? wind)+(h.wind_gusts_10m?.[next] ?? h.wind_gusts_10m?.[i] ?? wind))/2;
+      const isDay=Math.round(((h.is_day?.[i] ?? 1)+(h.is_day?.[next] ?? h.is_day?.[i] ?? 1))/2);
+      const slot={time,hour:d.getHours(),temp,dew,rh,precip,cloud,visibility,wind,gust,isDay,dewSpread:Math.max(0,temp-dew)};
+      Object.assign(slot,computeAdvantage(slot));
+      slots.push(slot);
+    }
+    state.slots=slots;
+    recomputeWindows();
+    showToast(state.mgrs || `${lat.toFixed(2)}, ${lon.toFixed(2)}`);
+  }catch(e){
+    document.getElementById('bestMain').textContent='Virhe / Error';
+    document.getElementById('bestDesc').textContent='Datan haku epäonnistui.';
+  }
+}
+
+function recomputeWindows(){
+  const start=state.selectedStart || new Date();
+  const filtered=state.slots.filter(s=>new Date(s.time)>=start);
+  state.current=filtered[0] || null;
+  state.windows=buildWindows(filtered);
+  renderState();
+}
+
+function renderState(){
+  const bestMain=document.getElementById('bestMain');
+  const bestDesc=document.getElementById('bestDesc');
+  const slot2=document.getElementById('slot2');
+  const slot2desc=document.getElementById('slot2desc');
+  const slot3=document.getElementById('slot3');
+  const slot3desc=document.getElementById('slot3desc');
+  const nowBadge=document.getElementById('nowBadge');
+  const currentState=document.getElementById('currentState');
+  const confidenceText=document.getElementById('confidenceText');
+  const scoreText=document.getElementById('scoreText');
+  document.getElementById('startPicker').value=toLocalInputValue(state.selectedStart || new Date());
+
+  if(!state.slots.length){
+    bestMain.textContent=tr('noSelection');
+    bestDesc.textContent='';
+    slot2.textContent=tr('alternative');
+    slot2desc.textContent=tr('noAlt');
+    slot3.textContent=tr('reserve');
+    slot3desc.textContent=tr('noAlt');
+    currentState.textContent='';
+    nowBadge.textContent='';
+    confidenceText.textContent='';
+    scoreText.textContent='';
+    document.getElementById('timeline').innerHTML='';
+    updateMetrics(null);
+    return;
+  }
+
+  if(!state.windows.length){
+    bestMain.textContent=tr('noFuture');
+    bestDesc.textContent='';
+    slot2.textContent=tr('alternative');
+    slot2desc.textContent=tr('noAlt');
+    slot3.textContent=tr('reserve');
+    slot3desc.textContent=tr('noAlt');
+    const now=scoreClass(state.current?.score || 0);
+    currentState.textContent=tr('nowState');
+    nowBadge.textContent=now.label;
+    nowBadge.className=`badge ${now.cls==='good'?'bg-good':now.cls==='warn'?'bg-warn':'bg-bad'}`;
+    confidenceText.textContent='';
+    scoreText.textContent=state.current ? tr('score').replace('{v}', state.current.score) : '';
+    renderTimeline();
+    updateMetrics(state.current);
+    return;
+  }
+
+  const w1=state.windows[0], w2=state.windows[1], w3=state.windows[2];
+  const c1=scoreClass(w1.avg);
+  bestMain.textContent=`${c1.symbol} ${tr('recommendation')} · ${w1.startLabel}–${w1.endLabel}`;
+  bestMain.style.color=c1.cls==='good'?'var(--green)':c1.cls==='warn'?'var(--yellow)':'var(--red)';
+  bestDesc.textContent=`${tr('bestDesc')}. ${w1.reason}`;
+  confidenceText.textContent=tr('confidence').replace('{v}', confidenceLabel(w1.confidence));
+  scoreText.textContent=tr('score').replace('{v}', w1.avg);
+
+  if(w2){
+    const c2=scoreClass(w2.avg);
+    slot2.textContent=`${c2.symbol} ${tr('alternative')} · ${w2.startLabel}–${w2.endLabel}`;
+    slot2desc.textContent=`${tr('reasonPrefixAlternative')} ${w2.reason}`;
+  }else{
+    slot2.textContent=tr('alternative');
+    slot2desc.textContent=tr('noAlt');
+  }
+
+  if(w3){
+    const c3=scoreClass(w3.avg);
+    slot3.textContent=`${c3.symbol} ${tr('reserve')} · ${w3.startLabel}–${w3.endLabel}`;
+    slot3desc.textContent=`${tr('reasonPrefixFallback')} ${w3.reason}`;
+  }else{
+    slot3.textContent=tr('reserve');
+    slot3desc.textContent=tr('noAlt');
+  }
+
+  const now=scoreClass(state.current?.score || 0);
+  currentState.textContent=tr('nowState');
+  nowBadge.textContent=now.label;
+  nowBadge.className=`badge ${now.cls==='good'?'bg-good':now.cls==='warn'?'bg-warn':'bg-bad'}`;
+
+  renderTimeline();
+  updateMetrics(w1.lead);
+}
+
+function updateMetrics(slot){
+  const s=slot || {cover:0,uas:0,ir:0,isr:0,score:0,rh:0,precip:0,dewSpread:10,visibility:20};
+  document.getElementById('coverMetric').textContent=tr('cover_main').replace('{v}', categoryText(s.cover,'cover'));
+  document.getElementById('coverExplain').textContent=tr('cover_sub');
+  document.getElementById('uasMetric').textContent=tr('uas_main').replace('{v}', categoryText(s.uas,'uas'));
+  document.getElementById('uasExplain').textContent=tr('uas_sub');
+  document.getElementById('irMetric').textContent=tr('ir_main').replace('{v}', categoryText(s.ir,'ir'));
+  document.getElementById('irExplain').textContent=tr('ir_sub');
+  document.getElementById('isrMetric').textContent=tr('isr_main').replace('{v}', categoryText(s.isr,'isr'));
+  document.getElementById('isrExplain').textContent=tr('isr_sub');
+}
+function renderTimeline(){
+  const timeline=document.getElementById('timeline');
+  timeline.innerHTML='';
+  if(!state.slots.length) return;
+  const start=state.selectedStart || new Date();
+  const end=new Date(start.getTime()+5*24*60*60*1000);
+  const grouped={};
+  state.slots.filter(s=>{const t=new Date(s.time); return t>=start && t<=end;}).forEach(s=>{
+    const d=new Date(s.time), key=d.toISOString().slice(0,10);
+    if(!grouped[key]) grouped[key]=[];
+    grouped[key].push(s);
+  });
+  const marks=new Set((state.windows||[]).map(w=>w.startTime));
+  Object.keys(grouped).slice(0,5).forEach(dateKey=>{
+    const slots=grouped[dateKey], d=new Date(dateKey+"T00:00:00");
+    const row=document.createElement('div'); row.className='day';
+    const day=document.createElement('div'); day.className='dayname'; day.textContent=dict[lang].dayNames[d.getDay()];
+    const bar=document.createElement('div'); bar.className='bar';
+    slots.slice(0,12).forEach(s=>{
+      const seg=document.createElement('div');
+      const lab=scoreClass(s.score);
+      seg.className=`seg ${lab.cls}${marks.has(s.time)?' mark':''}`;
+      seg.textContent='';
+      bar.appendChild(seg);
+    });
+    row.append(day,bar);
+    timeline.appendChild(row);
+  });
+}
+function getSharePayload(){
+  if(!state.windows.length) return null;
+  const w1=state.windows[0];
+  const lead=w1.lead;
+  const area=state.mgrs ? `${state.mgrs} (~${Math.round(radius/1000)} km)` : (state.lastLatLng ? `${state.lastLatLng.lat.toFixed(3)}, ${state.lastLatLng.lng.toFixed(3)}` : '-');
+  return {
+    window:w1,
+    lead,
+    area,
+    lines:[
+      tr('shareTitle'),
+      `${tr('shareArea')}: ${area}`,
+      `${tr('shareTime')}: ${w1.startLabel}–${w1.endLabel}`,
+      `${tr('shareAdvantage')}: ${w1.avg}`,
+      `${tr('shareConf')}: ${confidenceLabel(w1.confidence)}`,
+      `${tr('shareReason')}: ${w1.reason}`,
+      `${tr('shareCover')}: ${categoryText(lead.cover,'cover')}`,
+      `${tr('shareUAS')}: ${categoryText(lead.uas,'uas')}`,
+      `${tr('shareIR')}: ${categoryText(lead.ir,'ir')}`,
+      `${tr('shareISR')}: ${categoryText(lead.isr,'isr')}`
+    ]
+  };
+}
+function buildShareText(){
+  const payload=getSharePayload();
+  return payload ? payload.lines.join('\n') : '';
+}
+async function copyAssessmentText(){
+  const text=buildShareText();
+  if(!text) return;
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(text);
+    }else{
+      const ta=document.createElement('textarea');
+      ta.value=text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); document.body.removeChild(ta);
+    }
+    showToast(tr('copied'));
+  }catch(e){}
+}
+function wrapCanvasText(ctx, text, x, y, maxWidth, lineHeight){
+  const words=text.split(' ');
+  let line='';
+  const lines=[];
+  for(const word of words){
+    const test=line ? line + ' ' + word : word;
+    if(ctx.measureText(test).width > maxWidth && line){
+      lines.push(line);
+      line=word;
+    }else line=test;
+  }
+  if(line) lines.push(line);
+  lines.forEach((ln,i)=>ctx.fillText(ln,x,y+i*lineHeight));
+  return y + lines.length*lineHeight;
+}
+async function createAssessmentCardBlob(){
+  const payload=getSharePayload();
+  if(!payload) return null;
+  const canvas=document.createElement('canvas');
+  canvas.width=1080; canvas.height=1350;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#0f1412'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  ctx.strokeStyle='#2a332d'; ctx.lineWidth=4; ctx.strokeRect(28,28,canvas.width-56,canvas.height-56);
+  ctx.fillStyle='#e8efe9';
+  ctx.font='700 64px Arial';
+  ctx.fillText('HETKI+',72,112);
+  ctx.fillStyle='#9fb39f';
+  ctx.font='400 28px Arial';
+  ctx.fillText('Mission briefing card',72,154);
+  ctx.fillStyle='#1f2a24'; ctx.fillRect(72,192,936,118);
+  ctx.fillStyle='#c6da74'; ctx.font='700 46px Arial';
+  ctx.fillText(`${tr('shareTime')}: ${payload.window.startLabel}–${payload.window.endLabel}`,96,262);
+  ctx.fillStyle='#e8efe9'; ctx.font='700 36px Arial';
+  ctx.fillText(`${tr('shareAdvantage')}: ${payload.window.avg}`,72,376);
+  ctx.fillText(`${tr('shareConf')}: ${confidenceLabel(payload.window.confidence)}`,72,428);
+  ctx.fillText(`${tr('shareArea')}:`,72,512);
+  ctx.fillStyle='#d9ded8'; ctx.font='400 34px Arial';
+  let y=wrapCanvasText(ctx,payload.area,72,558,936,42);
+  const items=[
+    `${tr('shareReason')}: ${payload.window.reason}`,
+    `${tr('shareCover')}: ${categoryText(payload.lead.cover,'cover')}`,
+    `${tr('shareUAS')}: ${categoryText(payload.lead.uas,'uas')}`,
+    `${tr('shareIR')}: ${categoryText(payload.lead.ir,'ir')}`,
+    `${tr('shareISR')}: ${categoryText(payload.lead.isr,'isr')}`
+  ];
+  y+=30;
+  ctx.fillStyle='#e8efe9'; ctx.font='700 34px Arial';
+  items.forEach((item, idx)=>{
+    if(idx===0){ y=wrapCanvasText(ctx,item,72,y,936,42)+22; }
+    else { ctx.fillText(item,72,y); y+=60; }
+  });
+  ctx.fillStyle='#9fb39f'; ctx.font='400 28px Arial';
+  ctx.fillText('Open-Meteo + OpenStreetMap/CARTO',72,1268);
+  return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
+}
+async function shareAssessmentCard(){
+  const blob=await createAssessmentCardBlob();
+  if(!blob) return;
+  const file=new File([blob], 'hetki-plus-brief.png', {type:'image/png'});
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]}) && navigator.share){
+      await navigator.share({files:[file], title:'HETKI+', text:buildShareText()});
+      showToast(tr('pngReady'));
+      return;
+    }
+  }catch(e){}
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='hetki-plus-brief.png';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+  showToast(tr('pngReady'));
+}
+
+document.getElementById('startPicker').addEventListener('change',e=>{
+  const picked=parseLocalInputValue(e.target.value), now=new Date(), max=new Date(now.getTime()+5*24*60*60*1000);
+  state.selectedStart=picked<now?now:picked>max?max:picked;
+  setMinStart(); setMaxStart();
+  if(state.slots.length) recomputeWindows();
+});
+
+setLang('fi');
+setMinStart();
+setMaxStart();
+initMap();
+
+</script>
+
+</body>
+</html>
