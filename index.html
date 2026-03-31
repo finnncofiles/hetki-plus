@@ -163,6 +163,14 @@
         <div class="small" style="margin-top:8px" id="driversText"></div>
       </div>
     </details>
+    <details class="infoBox" style="padding:0; border-top:none; margin-top:10px">
+      <summary id="modelSummary"></summary>
+      <div class="infoContent" style="padding-top:8px">
+        <div class="small" id="modelIntro"></div>
+        <div class="small" style="margin-top:8px" id="modelWeights"></div>
+        <div class="small" style="margin-top:12px" id="modelCurrent"></div>
+      </div>
+    </details>
     <button class="button" onclick="toggleMore()" id="moreBtn"></button>
   </div>
 
@@ -241,6 +249,19 @@ const dict = {
     driversUAS:"Paikallinen UAS",
     driversIR:"Lämpöerottuvuus",
     driversISR:"Yläilman ISR",
+    modelSummary:"Näytä data ja malli ▾",
+    modelIntro:"Alla näkyvät tämänhetkiset syötearvot sekä mallin painot, joista liikeikkuna muodostuu.",
+    modelWeightsLabel:"Mallin painot",
+    modelCurrentLabel:"Nykyinen data",
+    modelWeightsText:"Peite 35 %, paikallinen UAS 20 %, lämpöerottuvuus 25 %, yläilman ISR 20 %.",
+    modelVis:"Näkyvyys",
+    modelRH:"Kosteus",
+    modelRain:"Sade",
+    modelCloud:"Pilvisyys",
+    modelWind:"Tuuli",
+    modelGust:"Puuskat",
+    modelTemp:"Lämpötila",
+    modelDew:"Kastepiste-ero",
     confidence:"Luotettavuus: {v}",
     score:"Hetki-etu: {v}",
     copy:"Kopioi brief",
@@ -333,6 +354,19 @@ const dict = {
     driversUAS:"Local UAS",
     driversIR:"Thermal detectability",
     driversISR:"Upper-air ISR",
+    modelSummary:"Show data and model ▾",
+    modelIntro:"Below you can see the current input values and the model weighting behind the movement window.",
+    modelWeightsLabel:"Model weights",
+    modelCurrentLabel:"Current data",
+    modelWeightsText:"Cover 35%, local UAS 20%, thermal detectability 25%, upper-air ISR 20%.",
+    modelVis:"Visibility",
+    modelRH:"Humidity",
+    modelRain:"Precipitation",
+    modelCloud:"Cloud cover",
+    modelWind:"Wind",
+    modelGust:"Gusts",
+    modelTemp:"Temperature",
+    modelDew:"Dew point spread",
     confidence:"Confidence: {v}",
     score:"Advantage score: {v}",
     copy:"Copy brief",
@@ -425,6 +459,19 @@ const dict = {
     driversUAS:"Локальні БПЛА",
     driversIR:"Теплова помітність",
     driversISR:"Висотний ISR",
+    modelSummary:"Показати дані й модель ▾",
+    modelIntro:"Нижче видно поточні вхідні значення та ваги моделі, з яких формується вікно руху.",
+    modelWeightsLabel:"Ваги моделі",
+    modelCurrentLabel:"Поточні дані",
+    modelWeightsText:"Укриття 35%, локальні БПЛА 20%, теплова помітність 25%, висотний ISR 20%.",
+    modelVis:"Видимість",
+    modelRH:"Вологість",
+    modelRain:"Опади",
+    modelCloud:"Хмарність",
+    modelWind:"Вітер",
+    modelGust:"Пориви",
+    modelTemp:"Температура",
+    modelDew:"Різниця до точки роси",
     confidence:"Рівень впевненості: {v}",
     score:"Оцінка переваги: {v}",
     copy:"Скопіювати brief",
@@ -575,7 +622,7 @@ async function loadFavorite(idx){
 function setLang(l){
   lang=l;
   document.documentElement.lang=l==='ua'?'uk':l;
-  const mapping={infoSummary:'infoSummary',infoPurpose:'infoPurpose',infoDisclaimer:'infoDisclaimer',infoSources:'infoSources',mapHint:'mapHint',startLabel:'start',startHelper:'startHelper',nowBtn:'nowBtn',bestLabel:'best',nowSectionLabel:'nowSection',timelineLabel:'timeline',legendLine:'legend',extraLabel:'extra',driversSummary:'driversSummary',driversIntro:'driversIntro',copyBtn:'copy',shareBtn:'share',savePlaceBtn:'savePlace',footerSources:'infoSources'};
+  const mapping={infoSummary:'infoSummary',infoPurpose:'infoPurpose',infoDisclaimer:'infoDisclaimer',infoSources:'infoSources',mapHint:'mapHint',startLabel:'start',startHelper:'startHelper',nowBtn:'nowBtn',bestLabel:'best',nowSectionLabel:'nowSection',timelineLabel:'timeline',legendLine:'legend',extraLabel:'extra',driversSummary:'driversSummary',driversIntro:'driversIntro',modelSummary:'modelSummary',modelIntro:'modelIntro',copyBtn:'copy',shareBtn:'share',savePlaceBtn:'savePlace',footerSources:'infoSources'};
   Object.entries(mapping).forEach(([id,key])=>document.getElementById(id).textContent=tr(key));
   document.getElementById('moreBtn').textContent=document.getElementById('moreSection').classList.contains('hidden')?tr('more'):tr('less');
   renderFavorites();
@@ -886,6 +933,7 @@ function renderState(){
     document.getElementById('timeline').innerHTML='';
     updateMetrics(null);
     updateDrivers(null);
+    updateModel(null);
     return;
   }
 
@@ -905,6 +953,7 @@ function renderState(){
     renderTimeline();
     updateMetrics(state.current);
     updateDrivers(state.current);
+    updateModel(state.current);
     return;
   }
 
@@ -942,6 +991,7 @@ function renderState(){
   renderTimeline();
   updateMetrics(w1.lead);
   updateDrivers(w1.lead);
+  updateModel(w1.lead);
 }
 
 
@@ -980,6 +1030,23 @@ function updateDrivers(slot){
     tr('driversLine').replace('{label}', tr('driversISR')).replace('{value}', slot.isr).replace('{state}', categoryText(slot.isr,'isr'))
   ];
   textEl.innerHTML = lines.join('<br>');
+}
+
+function updateModel(slot){
+  const weights=document.getElementById('modelWeights');
+  const current=document.getElementById('modelCurrent');
+  if(!weights || !current) return;
+  weights.innerHTML = `<strong>${tr('modelWeightsLabel')}:</strong> ${tr('modelWeightsText')}`;
+  if(!slot){ current.innerHTML=''; return; }
+  current.innerHTML = `<strong>${tr('modelCurrentLabel')}:</strong><br>`
+    + `${tr('modelVis')}: ${slot.visibility.toFixed(1)} km<br>`
+    + `${tr('modelRH')}: ${Math.round(slot.rh)} %<br>`
+    + `${tr('modelRain')}: ${slot.precip.toFixed(1)} mm/h<br>`
+    + `${tr('modelCloud')}: ${Math.round(slot.cloud)} %<br>`
+    + `${tr('modelWind')}: ${slot.wind.toFixed(1)} m/s<br>`
+    + `${tr('modelGust')}: ${slot.gust.toFixed(1)} m/s<br>`
+    + `${tr('modelTemp')}: ${slot.temp.toFixed(1)} °C<br>`
+    + `${tr('modelDew')}: ${slot.dewSpread.toFixed(1)} °C`;
 }
 function updateMetrics(slot){
   const s=slot || {cover:0,uas:0,ir:0,isr:0,score:0,rh:0,precip:0,dewSpread:10,visibility:20};
