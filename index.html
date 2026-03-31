@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Hetki+ v3.4.0 favorites-share</title>
+  <title>Hetki+ v30</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     :root{
@@ -102,7 +102,7 @@
   <details class="infoBox">
     <summary id="infoSummary"></summary>
     <div class="infoContent">
-      <div class="mid">HETKI+ <span>v3.4.0 favorites-share</span></div>
+      <div class="mid">HETKI+ <span>v30</span></div>
       <div class="small" id="infoPurpose"></div>
       <div class="small" style="margin-top:10px" id="infoDisclaimer"></div>
       <div class="small" style="margin-top:10px" id="infoSources"></div>
@@ -156,6 +156,13 @@
         <div class="small" id="slot3desc"></div>
       </div>
     </div>
+    <details class="infoBox" style="padding:0; border-top:none; margin-top:10px">
+      <summary id="driversSummary"></summary>
+      <div class="infoContent" style="padding-top:8px">
+        <div class="small" id="driversIntro"></div>
+        <div class="small" style="margin-top:8px" id="driversText"></div>
+      </div>
+    </details>
     <button class="button" onclick="toggleMore()" id="moreBtn"></button>
   </div>
 
@@ -227,6 +234,13 @@ const dict = {
     timeline:"5 VRK AIKAJANA (2 H SLOTIT)",
     legend:"🟩 ikkuna syntyy   🟨 ehkä   🟥 no-go",
     extra:"LISÄHUOMIOT",
+    driversSummary:"Mikä määrittää arvion ▾",
+    driversIntro:"Alla näkyy, mitkä osatekijät painoivat suositusta tai nykytilannetta eniten.",
+    driversLine:"{label}: {value}/100 → {state}",
+    driversCover:"Peite",
+    driversUAS:"Paikallinen UAS",
+    driversIR:"Lämpöerottuvuus",
+    driversISR:"Yläilman ISR",
     confidence:"Luotettavuus: {v}",
     score:"Hetki-etu: {v}",
     copy:"Kopioi brief",
@@ -259,15 +273,18 @@ const dict = {
     quality_weak:"heikko",
     quality_strong:"heikkenee",
     quality_stronger:"heikkenee selvästi",
+    thermal_clear:"erottuu hyvin",
+    thermal_partial:"erottuu osittain",
+    thermal_poor:"erottuu heikosti",
     quality_works:"toimii",
     quality_limited:"rajoitettu",
     quality_off:"ei käytettävissä",
-    cover_main:"🟨 ☁️ Peite: {v}",
+    cover_main:"{icon} ☁️ Peite: {v}",
     cover_sub:"näkyvyys, kosteus, sade, pilvisyys",
     uas_main:"🟥 🛸 UAS (lähialue): {v}",
     uas_sub:"tuuli, puuskat, sade, lämpötila",
-    ir_main:"🟨 🌡️ IR: {v}",
-    ir_sub:"kastepiste-ero, kosteus, sade, näkyvyys",
+    ir_main:"{icon} 🌡️ Lämpöerottuvuus: {v}",
+    ir_sub:"kastepiste-ero, kosteus, sade ja näkyvyys vaikuttavat siihen, kuinka hyvin kohde erottuu lämpönä",
     isr_main:"🟩 📡 ISR (yläilma): {v}",
     isr_sub:"EO/IR-heikkeneminen yläilman tiedustelulennokeille",
     score_suggestion:"suositus",
@@ -283,9 +300,11 @@ const dict = {
     shareReason:"Peruste",
     shareCover:"Peite",
     shareUAS:"UAS",
-    shareIR:"IR",
+    shareIR:"Lämpöerottuvuus",
     shareISR:"ISR",
     shareConf:"Luotettavuus",
+    cardSubtitle:"Tehtäväkortti",
+    cardFooter:"Open-Meteo + OpenStreetMap/CARTO",
     dayNames:["Su","Ma","Ti","Ke","To","Pe","La"]
   },
   en: {
@@ -307,6 +326,13 @@ const dict = {
     timeline:"5-DAY TIMELINE (2H SLOTS)",
     legend:"🟩 window opening   🟨 possible   🟥 no-go",
     extra:"EXTRA NOTES",
+    driversSummary:"What drives the result ▾",
+    driversIntro:"Below you can see which factors most influenced the recommendation or current state.",
+    driversLine:"{label}: {value}/100 → {state}",
+    driversCover:"Cover",
+    driversUAS:"Local UAS",
+    driversIR:"Thermal detectability",
+    driversISR:"Upper-air ISR",
     confidence:"Confidence: {v}",
     score:"Advantage score: {v}",
     copy:"Copy brief",
@@ -339,16 +365,19 @@ const dict = {
     quality_weak:"weak",
     quality_strong:"degraded",
     quality_stronger:"degraded strongly",
+    thermal_clear:"clearly detectable",
+    thermal_partial:"partly detectable",
+    thermal_poor:"poorly detectable",
     quality_works:"operational",
     quality_limited:"limited",
     quality_off:"unavailable",
-    cover_main:"🟨 ☁️ Cover: {v}",
+    cover_main:"{icon} ☁️ Cover: {v}",
     cover_sub:"visibility, humidity, precipitation, cloud cover",
-    uas_main:"🟥 🛸 Local UAS: {v}",
+    uas_main:"{icon} 🛸 Local UAS: {v}",
     uas_sub:"wind, gusts, precipitation, temperature",
-    ir_main:"🟨 🌡️ IR: {v}",
-    ir_sub:"dew point spread, humidity, precipitation, visibility",
-    isr_main:"🟩 📡 Upper-air ISR: {v}",
+    ir_main:"{icon} 🌡️ Thermal detectability: {v}",
+    ir_sub:"dew point spread, humidity, precipitation and visibility affect how clearly a person stands out to a thermal sensor",
+    isr_main:"{icon} 📡 Upper-air ISR: {v}",
     isr_sub:"EO/IR degradation for upper-air reconnaissance drones",
     score_suggestion:"recommended",
     score_option:"possible",
@@ -356,16 +385,18 @@ const dict = {
     confidence_high:"High",
     confidence_medium:"Moderate",
     confidence_low:"Low",
-    shareTitle:"HETKI+ ASSESSMENT",
+    shareTitle:"HETKI+ assessment",
     shareArea:"Area",
     shareTime:"Time",
     shareAdvantage:"Advantage",
     shareReason:"Reason",
     shareCover:"Cover",
     shareUAS:"Local UAS",
-    shareIR:"IR",
+    shareIR:"Thermal detectability",
     shareISR:"Upper-air ISR",
     shareConf:"Confidence",
+    cardSubtitle:"Mission briefing card",
+    cardFooter:"Open-Meteo + OpenStreetMap/CARTO",
     dayNames:["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]
   },
   ua: {
@@ -387,6 +418,13 @@ const dict = {
     timeline:"ШКАЛА 5 ДІБ (СЛОТИ 2 ГОД)",
     legend:"🟩 вікно формується   🟨 можливо   🟥 неприйнятно",
     extra:"ДОДАТКОВІ СПОСТЕРЕЖЕННЯ",
+    driversSummary:"Що визначає результат ▾",
+    driversIntro:"Нижче видно, які чинники найбільше вплинули на рекомендацію або поточний стан.",
+    driversLine:"{label}: {value}/100 → {state}",
+    driversCover:"Укриття",
+    driversUAS:"Локальні БПЛА",
+    driversIR:"Теплова помітність",
+    driversISR:"Висотний ISR",
     confidence:"Рівень впевненості: {v}",
     score:"Оцінка переваги: {v}",
     copy:"Скопіювати brief",
@@ -419,16 +457,19 @@ const dict = {
     quality_weak:"слабкий",
     quality_strong:"погіршується",
     quality_stronger:"сильно погіршується",
+    thermal_clear:"чітко помітна",
+    thermal_partial:"помітна частково",
+    thermal_poor:"помітна слабо",
     quality_works:"працює",
     quality_limited:"обмежений",
     quality_off:"недоступний",
-    cover_main:"🟨 ☁️ Укриття: {v}",
+    cover_main:"{icon} ☁️ Укриття: {v}",
     cover_sub:"видимість, вологість, опади, хмарність",
-    uas_main:"🟥 🛸 Локальні БПЛА: {v}",
+    uas_main:"{icon} 🛸 Локальні БПЛА: {v}",
     uas_sub:"вітер, пориви, опади, температура",
-    ir_main:"🟨 🌡️ IR: {v}",
-    ir_sub:"різниця з точкою роси, вологість, опади, видимість",
-    isr_main:"🟩 📡 Висотний ISR: {v}",
+    ir_main:"{icon} 🌡️ Теплова помітність: {v}",
+    ir_sub:"різниця з точкою роси, вологість, опади та видимість впливають на те, наскільки добре людина помітна для теплового сенсора",
+    isr_main:"{icon} 📡 Висотний ISR: {v}",
     isr_sub:"погіршення EO/IR для висотних розвідувальних БПЛА",
     score_suggestion:"рекомендовано",
     score_option:"можливо",
@@ -443,9 +484,11 @@ const dict = {
     shareReason:"Підстава",
     shareCover:"Укриття",
     shareUAS:"Локальні БПЛА",
-    shareIR:"IR",
+    shareIR:"Теплова помітність",
     shareISR:"Висотний ISR",
     shareConf:"Рівень впевненості",
+    cardSubtitle:"Картка оцінки",
+    cardFooter:"Open-Meteo + OpenStreetMap/CARTO",
     dayNames:["Нд","Пн","Вт","Ср","Чт","Пт","Сб"]
   }
 };
@@ -532,7 +575,7 @@ async function loadFavorite(idx){
 function setLang(l){
   lang=l;
   document.documentElement.lang=l==='ua'?'uk':l;
-  const mapping={infoSummary:'infoSummary',infoPurpose:'infoPurpose',infoDisclaimer:'infoDisclaimer',infoSources:'infoSources',mapHint:'mapHint',startLabel:'start',startHelper:'startHelper',nowBtn:'nowBtn',bestLabel:'best',nowSectionLabel:'nowSection',timelineLabel:'timeline',legendLine:'legend',extraLabel:'extra',copyBtn:'copy',shareBtn:'share',savePlaceBtn:'savePlace',footerSources:'infoSources'};
+  const mapping={infoSummary:'infoSummary',infoPurpose:'infoPurpose',infoDisclaimer:'infoDisclaimer',infoSources:'infoSources',mapHint:'mapHint',startLabel:'start',startHelper:'startHelper',nowBtn:'nowBtn',bestLabel:'best',nowSectionLabel:'nowSection',timelineLabel:'timeline',legendLine:'legend',extraLabel:'extra',driversSummary:'driversSummary',driversIntro:'driversIntro',copyBtn:'copy',shareBtn:'share',savePlaceBtn:'savePlace',footerSources:'infoSources'};
   Object.entries(mapping).forEach(([id,key])=>document.getElementById(id).textContent=tr(key));
   document.getElementById('moreBtn').textContent=document.getElementById('moreSection').classList.contains('hidden')?tr('more'):tr('less');
   renderFavorites();
@@ -596,7 +639,12 @@ function categoryText(value, type){
     if(value>=25) return tr('quality_limited');
     return tr('quality_works');
   }
-  if(type==='ir' || type==='isr'){
+  if(type==='ir'){
+    if(value>=50) return tr('thermal_poor');
+    if(value>=25) return tr('thermal_partial');
+    return tr('thermal_clear');
+  }
+  if(type==='isr'){
     if(value>=50) return tr('quality_stronger');
     if(value>=25) return tr('quality_strong');
     return tr('quality_good');
@@ -837,6 +885,7 @@ function renderState(){
     scoreText.textContent='';
     document.getElementById('timeline').innerHTML='';
     updateMetrics(null);
+    updateDrivers(null);
     return;
   }
 
@@ -855,6 +904,7 @@ function renderState(){
     scoreText.textContent=state.current ? tr('score').replace('{v}', state.current.score) : '';
     renderTimeline();
     updateMetrics(state.current);
+    updateDrivers(state.current);
     return;
   }
 
@@ -891,17 +941,55 @@ function renderState(){
 
   renderTimeline();
   updateMetrics(w1.lead);
+  updateDrivers(w1.lead);
 }
 
+
+
+function statusIcon(type, value){
+  if(type==='cover'){
+    if(value>=70) return '✅️';
+    if(value>=40) return '☑️';
+    return '❌️';
+  }
+  if(type==='uas'){
+    if(value>=50) return '✅️';
+    if(value>=25) return '☑️';
+    return '❌️';
+  }
+  if(type==='ir'){
+    if(value>=50) return '✅️';
+    if(value>=25) return '☑️';
+    return '❌️';
+  }
+  if(type==='isr'){
+    if(value>=50) return '✅️';
+    if(value>=25) return '☑️';
+    return '❌️';
+  }
+  return '☑️';
+}
+function updateDrivers(slot){
+  const textEl=document.getElementById('driversText');
+  if(!textEl) return;
+  if(!slot){ textEl.textContent=''; return; }
+  const lines=[
+    tr('driversLine').replace('{label}', tr('driversCover')).replace('{value}', slot.cover).replace('{state}', categoryText(slot.cover,'cover')),
+    tr('driversLine').replace('{label}', tr('driversUAS')).replace('{value}', slot.uas).replace('{state}', categoryText(slot.uas,'uas')),
+    tr('driversLine').replace('{label}', tr('driversIR')).replace('{value}', slot.ir).replace('{state}', categoryText(slot.ir,'ir')),
+    tr('driversLine').replace('{label}', tr('driversISR')).replace('{value}', slot.isr).replace('{state}', categoryText(slot.isr,'isr'))
+  ];
+  textEl.innerHTML = lines.join('<br>');
+}
 function updateMetrics(slot){
   const s=slot || {cover:0,uas:0,ir:0,isr:0,score:0,rh:0,precip:0,dewSpread:10,visibility:20};
-  document.getElementById('coverMetric').textContent=tr('cover_main').replace('{v}', categoryText(s.cover,'cover'));
+  document.getElementById('coverMetric').textContent=tr('cover_main').replace('{icon}', statusIcon('cover', s.cover)).replace('{v}', categoryText(s.cover,'cover'));
   document.getElementById('coverExplain').textContent=tr('cover_sub');
-  document.getElementById('uasMetric').textContent=tr('uas_main').replace('{v}', categoryText(s.uas,'uas'));
+  document.getElementById('uasMetric').textContent=tr('uas_main').replace('{icon}', statusIcon('uas', s.uas)).replace('{v}', categoryText(s.uas,'uas'));
   document.getElementById('uasExplain').textContent=tr('uas_sub');
-  document.getElementById('irMetric').textContent=tr('ir_main').replace('{v}', categoryText(s.ir,'ir'));
+  document.getElementById('irMetric').textContent=tr('ir_main').replace('{icon}', statusIcon('ir', s.ir)).replace('{v}', categoryText(s.ir,'ir'));
   document.getElementById('irExplain').textContent=tr('ir_sub');
-  document.getElementById('isrMetric').textContent=tr('isr_main').replace('{v}', categoryText(s.isr,'isr'));
+  document.getElementById('isrMetric').textContent=tr('isr_main').replace('{icon}', statusIcon('isr', s.isr)).replace('{v}', categoryText(s.isr,'isr'));
   document.getElementById('isrExplain').textContent=tr('isr_sub');
 }
 function renderTimeline(){
@@ -1001,7 +1089,7 @@ async function createAssessmentCardBlob(){
   ctx.fillText('HETKI+',72,112);
   ctx.fillStyle='#9fb39f';
   ctx.font='400 28px Arial';
-  ctx.fillText('Mission briefing card',72,154);
+  ctx.fillText(tr('cardSubtitle'),72,154);
   ctx.fillStyle='#1f2a24'; ctx.fillRect(72,192,936,118);
   ctx.fillStyle='#c6da74'; ctx.font='700 46px Arial';
   ctx.fillText(`${tr('shareTime')}: ${payload.window.startLabel}–${payload.window.endLabel}`,96,262);
@@ -1025,7 +1113,7 @@ async function createAssessmentCardBlob(){
     else { ctx.fillText(item,72,y); y+=60; }
   });
   ctx.fillStyle='#9fb39f'; ctx.font='400 28px Arial';
-  ctx.fillText('Open-Meteo + OpenStreetMap/CARTO',72,1268);
+  ctx.fillText(tr('cardFooter'),72,1268);
   return new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
 }
 async function shareAssessmentCard(){
