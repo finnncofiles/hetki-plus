@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <title>Hetki+ v30</title>
+  <title>Hetki+ v30.1 model v2</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <style>
     :root{
@@ -102,7 +102,7 @@
   <details class="infoBox">
     <summary id="infoSummary"></summary>
     <div class="infoContent">
-      <div class="mid">HETKI+ <span>v30</span></div>
+      <div class="mid">HETKI+ <span>v30.1 model v2</span></div>
       <div class="small" id="infoPurpose"></div>
       <div class="small" style="margin-top:10px" id="infoDisclaimer"></div>
       <div class="small" style="margin-top:10px" id="infoSources"></div>
@@ -253,7 +253,7 @@ const dict = {
     modelIntro:"Alla näkyvät tämänhetkiset syötearvot sekä mallin painot, joista liikeikkuna muodostuu.",
     modelWeightsLabel:"Mallin painot",
     modelCurrentLabel:"Nykyinen data",
-    modelWeightsText:"Peite 35 %, paikallinen UAS 20 %, lämpöerottuvuus 25 %, yläilman ISR 20 %.",
+    modelWeightsText:"Peite 30 %, paikallinen UAS 20 %, lämpöerottuvuus 30 %, yläilman ISR 20 %. Peite painottaa näkyvyyttä, sadetta ja pilvisyyttä enemmän kuin kosteutta.",
     modelVis:"Näkyvyys",
     modelRH:"Kosteus",
     modelRain:"Sade",
@@ -358,7 +358,7 @@ const dict = {
     modelIntro:"Below you can see the current input values and the model weighting behind the movement window.",
     modelWeightsLabel:"Model weights",
     modelCurrentLabel:"Current data",
-    modelWeightsText:"Cover 35%, local UAS 20%, thermal detectability 25%, upper-air ISR 20%.",
+    modelWeightsText:"Cover 30%, local UAS 20%, thermal detectability 30%, upper-air ISR 20%. Cover now favors visibility, precipitation and cloud more than humidity.",
     modelVis:"Visibility",
     modelRH:"Humidity",
     modelRain:"Precipitation",
@@ -463,7 +463,7 @@ const dict = {
     modelIntro:"Нижче видно поточні вхідні значення та ваги моделі, з яких формується вікно руху.",
     modelWeightsLabel:"Ваги моделі",
     modelCurrentLabel:"Поточні дані",
-    modelWeightsText:"Укриття 35%, локальні БПЛА 20%, теплова помітність 25%, висотний ISR 20%.",
+    modelWeightsText:"Укриття 30%, локальні БПЛА 20%, теплова помітність 30%, висотний ISR 20%. Укриття тепер більше спирається на видимість, опади та хмарність, а не на вологість.",
     modelVis:"Видимість",
     modelRH:"Вологість",
     modelRain:"Опади",
@@ -711,23 +711,28 @@ function confidenceLabel(conf){
 
 function computeCover(slot){
   let v=0;
-  if(slot.visibility<1) v+=50;
-  else if(slot.visibility<2) v+=42;
-  else if(slot.visibility<5) v+=32;
-  else if(slot.visibility<10) v+=18;
-  else v+=5;
 
-  if(slot.rh>95) v+=18;
-  else if(slot.rh>=90) v+=14;
-  else if(slot.rh>=80) v+=8;
-  else v+=2;
+  // Visual cover should mainly come from visibility, precipitation and cloud cover
+  if(slot.visibility<1) v+=45;
+  else if(slot.visibility<2) v+=36;
+  else if(slot.visibility<5) v+=24;
+  else if(slot.visibility<10) v+=10;
 
-  if(slot.precip>2) v+=15;
-  else if(slot.precip>=0.2) v+=18;
-  else if(slot.precip>0) v+=4;
+  if(slot.precip>2) v+=30;
+  else if(slot.precip>=0.5) v+=22;
+  else if(slot.precip>0) v+=10;
 
-  if(slot.cloud>80) v+=10;
-  else if(slot.cloud>=40) v+=5;
+  if(slot.cloud>90) v+=22;
+  else if(slot.cloud>=75) v+=16;
+  else if(slot.cloud>=50) v+=8;
+
+  // Humidity has only a minor support role in visual cover
+  if(slot.rh>97) v+=4;
+  else if(slot.rh>=92) v+=2;
+
+  // Clear weather limiter: sunny / open conditions should not look like good cover
+  if(slot.visibility>10 && slot.precip===0 && slot.cloud<40) v=Math.min(v,25);
+  if(slot.visibility>10 && slot.precip===0 && slot.cloud<25) v=Math.min(v,15);
 
   return clamp(Math.round(v),0,100);
 }
@@ -752,62 +757,74 @@ function computeUAS(slot){
 function computeIR(slot){
   let v=0;
   const dt=slot.dewSpread;
-  if(dt<=1) v+=40;
-  else if(dt<=2) v+=30;
-  else if(dt<=4) v+=15;
 
-  if(slot.rh>95) v+=20;
-  else if(slot.rh>=90) v+=15;
-  else if(slot.rh>=80) v+=8;
-
-  if(slot.precip>2) v+=20;
-  else if(slot.precip>=0.2) v+=15;
-
-  if(slot.visibility<1) v+=15;
-  else if(slot.visibility<2) v+=12;
-  else if(slot.visibility<5) v+=8;
-
-  if(slot.hour>=2 && slot.hour<6 && dt<=2) v+=10;
-  return clamp(Math.round(v),0,100);
-}
-function computeISR(slot){
-  let v=0;
-  const dt=slot.dewSpread;
-  if(slot.visibility<1) v+=40;
-  else if(slot.visibility<2) v+=34;
-  else if(slot.visibility<5) v+=26;
-  else if(slot.visibility<10) v+=12;
+  if(dt<=1) v+=45;
+  else if(dt<=2) v+=32;
+  else if(dt<=4) v+=16;
 
   if(slot.rh>95) v+=22;
   else if(slot.rh>=90) v+=16;
   else if(slot.rh>=80) v+=8;
 
-  if(slot.cloud>80) v+=15;
-  else if(slot.cloud>=40) v+=8;
+  if(slot.precip>2) v+=18;
+  else if(slot.precip>=0.2) v+=14;
 
-  if(dt<=1) v+=15;
-  else if(dt<=2) v+=10;
-  else if(dt<=4) v+=5;
+  if(slot.visibility<1) v+=12;
+  else if(slot.visibility<2) v+=10;
+  else if(slot.visibility<5) v+=6;
 
-  if(slot.precip>2) v+=8;
-  else if(slot.precip>=0.2) v+=5;
+  if(slot.hour>=2 && slot.hour<6 && (dt<=2 || slot.rh>=90)) v+=8;
+
+  return clamp(Math.round(v),0,100);
+}
+function computeISR(slot){
+  let v=0;
+
+  if(slot.visibility<1) v+=42;
+  else if(slot.visibility<2) v+=34;
+  else if(slot.visibility<5) v+=24;
+  else if(slot.visibility<10) v+=10;
+
+  if(slot.cloud>90) v+=24;
+  else if(slot.cloud>=75) v+=18;
+  else if(slot.cloud>=50) v+=10;
+
+  if(slot.precip>2) v+=14;
+  else if(slot.precip>=0.2) v+=8;
+
+  // IR support is only a small ISR modifier
+  if(slot.dewSpread<=2) v+=5;
+
+  if(slot.visibility>10 && slot.precip===0 && slot.cloud<40) v=Math.min(v,25);
+  if(slot.visibility>10 && slot.precip===0 && slot.cloud<25) v=Math.min(v,15);
 
   return clamp(Math.round(v),0,100);
 }
 function computeAdvantage(slot){
   const P=computeCover(slot), U=computeUAS(slot), IR=computeIR(slot), S=computeISR(slot);
-  let E=0.35*P+0.20*U+0.25*IR+0.20*S;
-  if(slot.visibility>10 && slot.rh<80 && slot.precip===0 && slot.dewSpread>4) E=Math.min(E,35);
-  if(S<25) E=Math.min(E,64);
-  if(slot.wind>15 || slot.precip>8) E=Math.min(E,44);
+  let E=0.30*P + 0.20*U + 0.30*IR + 0.20*S;
+
+  // Bright and open weather should not become a strong movement window
+  if(slot.visibility>10 && slot.precip===0 && slot.cloud<40 && P<35){
+    E=Math.min(E,45);
+  }
+  if(slot.visibility>10 && slot.precip===0 && slot.cloud<25 && P<25){
+    E=Math.min(E,35);
+  }
+
+  // One strong thermal cue alone should not create a green window
+  if(P<30 && U<30 && S<30){
+    E=Math.min(E,44);
+  }
+
   return {cover:P, uas:U, ir:IR, isr:S, score:clamp(Math.round(E),0,100)};
 }
 function buildReason(slot){
   const reasons=[];
   if(slot.visibility<5) reasons.push(tr('reason_low_vis'));
-  if(slot.rh>=90) reasons.push(tr('reason_high_humidity'));
-  if(slot.precip>=0.2 && slot.precip<=2) reasons.push(tr('reason_rain'));
+  if(slot.precip>=0.2) reasons.push(tr('reason_rain'));
   if(slot.dewSpread<=2) reasons.push(tr('reason_dew'));
+  if(slot.rh>=90 && slot.precip===0 && slot.visibility>=5) reasons.push(tr('reason_high_humidity'));
   if(slot.isr>=50) reasons.push(tr('reason_isr'));
   if(slot.uas>=25) reasons.push(tr('reason_uas'));
   return reasons.slice(0,3).join(', ');

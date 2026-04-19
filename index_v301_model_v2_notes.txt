@@ -1,0 +1,7 @@
+Model-only update from v30 base
+- Cover now depends mainly on visibility, precipitation and cloud cover
+- Humidity weight in cover reduced sharply
+- IR now carries humidity and dew spread more strongly
+- ISR now depends mainly on visibility, cloud and precipitation
+- Added clear weather limiter so sunny/open weather cannot become strong cover
+- One strong IR cue alone can no longer create a green window
